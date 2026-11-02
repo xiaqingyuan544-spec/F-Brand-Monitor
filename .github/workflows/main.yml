@@ -1,4 +1,5 @@
 name: All Brands Monitor
+
 on:
   schedule:
     - cron: '0 0 1,16 * *' # 每月 1 号和 16 号自动运行
@@ -7,16 +8,31 @@ on:
 jobs:
   run:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # 赋予读写权限，彻底解决 128 报错
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: 检查代码仓库
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - run: pip install -r requirements.txt
-      - run: python scraper.py
-      - name: Commit CSV
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 运行爬虫脚本
+        run: python scraper.py
+
+      - name: 自动提交并保存 CSV 历史文件
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add all_brands_lampen_history.csv
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update all brands data" && git push)
+          if git diff --cached --quiet; then
+            echo "没有发现数据变动，跳过提交。"
+          else
+            git commit -m "Auto-update all brands data: $(date +'%Y-%m-%d')"
+            git push
+          fi
