@@ -22,18 +22,15 @@ def scrape_all_brands():
     
     for brand in BRANDS:
         url = f"https://www.frankonia.de/ausruestung/lampen/Artikel.html?lastSelected=f_s_marke&f_s_marke={brand.replace(' ', '+')}"
-        print(f"正在抓取品牌: {brand} -> 链接: {url}")
+        print(f"正在抓取品牌: {brand}")
         
         try:
             response = requests.get(url, headers=headers, timeout=20)
-            print(f"  -> 状态码: {response.status_code}")
             if response.status_code != 200:
                 continue
                 
             soup = BeautifulSoup(response.text, "html.parser")
-            # 尝试多种可能的商品卡片选择器
             product_cards = soup.select(".product-tile, .article-item, article, div[data-product-id], .list-item")
-            print(f"  -> 找到商品卡片数量: {len(product_cards)}")
             
             for card in product_cards:
                 title_elem = card.select_one(".title, .product-title, h2, h3, a.title, a.product-name")
@@ -49,9 +46,9 @@ def scrape_all_brands():
                     "title": title, "price": price, "stock": stock
                 })
         except Exception as e:
-            print(f"  -> 抓取异常: {e}")
+            print(f"异常: {e}")
             
-    # 即使没抓到商品，也创建一个空表或写入一条提示，防止后续 Git 报错
+    # 写入 CSV 文件
     filename = "all_brands_lampen_history.csv"
     file_exists = os.path.isfile(filename)
     
@@ -61,13 +58,12 @@ def scrape_all_brands():
             writer.writerow(["抓取时间", "品牌", "商品型号/名称", "价格", "库存状态"])
         
         if all_products:
-            for item in data if 'data' in locals() else all_products:
+            for item in all_products:
                 writer.writerow([item["timestamp"], item["brand"], item["title"], item["price"], item["stock"]])
             print(f"成功写入 {len(all_products)} 条记录。")
         else:
-            # 写入一条空记录，确保文件一定存在，避免触发 128 报错
-            writer.writerow([current_time, "System", "未抓取到商品（可能触发反爬或结构变更）", "-", "-"])
-            print("未抓取到有效商品，已写入一条提示记录。")
+            writer.writerow([current_time, "System", "未直接抓取到商品（可能受反爬拦截）", "-", "-"])
+            print("写入提示记录。")
 
 if __name__ == "__main__":
     scrape_all_brands()
